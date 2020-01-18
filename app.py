@@ -31,8 +31,7 @@ END = ConversationHandler.END
 
 global bot
 global TOKEN
-TOKEN = '1047562188:AAGQPtjyCzNn6lHMc-obwmRR7CBfXoz5QYQ'
-#TOKEN = os.environ.get('TOKEN')
+TOKEN = os.environ.get('TOKEN')
 bot = telegram.Bot(TOKEN)
 
 
