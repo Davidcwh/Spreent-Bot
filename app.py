@@ -7,6 +7,18 @@ import telegram
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
                           ConversationHandler, CallbackQueryHandler)
 
+from MySpree import MySpree
+
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
+
+# Use a service account
+cred = credentials.Certificate('./key.json')
+firebase_admin.initialize_app(cred)
+
+db = firestore.client()
+
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -31,7 +43,7 @@ END = ConversationHandler.END
 
 global bot
 global TOKEN
-TOKEN = '1047562188:AAGQPtjyCzNn6lHMc-obwmRR7CBfXoz5QYQ'
+TOKEN = ''
 #TOKEN = os.environ.get('TOKEN')
 bot = telegram.Bot(TOKEN)
 
@@ -144,7 +156,9 @@ def save_spree(update, context):
 
     keyboard = InlineKeyboardMarkup(buttons)
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-    
+    testSpree = MySpree("Spreename2", 100, 50, "username2")
+    doc_ref = db.collection(u'Sprees')
+    doc_ref.add(testSpree.to_dict())
     # get results from database here and display them somehow
     context.user_data[START_OVER] = True
     return SHOWING
