@@ -48,7 +48,7 @@ current_field = None
 current_spree_id = None
 current_spree = MySpree(spree_name=None, min_amount=None, current_amount=None)
 
-TOKEN = '1022803073:AAF2Rf3EY4eXKMcs7HIBCgm-5J-q31nXS-c'
+TOKEN = '1047562188:AAGQPtjyCzNn6lHMc-obwmRR7CBfXoz5QYQ'
 #TOKEN = os.environ.get('TOKEN')
 bot = telegram.Bot(TOKEN)
 
@@ -67,6 +67,10 @@ def start(update, context):
     ]]
     keyboard = InlineKeyboardMarkup(buttons)
 
+    u_name = update.effective_user['username']
+    u_id = update.effective_user['id']
+    users_db = db.collection(u'Users')
+    users_db.add({'Username' : u_name, 'User_id' : u_id})
     
     # If we're starting over we don't need do send a new message
     if context.user_data.get(START_OVER):
@@ -150,14 +154,26 @@ def join_spree_get_amount(update, context):
         total_people.append(user_name)
         people_num = spree_obj.get('people_num') + 1
         
-        curr_amt = spree_obj.get('current_amount') + float(amt)
-        remaining_amt = spree_obj.get('remaining_amount') - float(amt)
+        curr_amt = float(spree_obj.get('current_amount')) + float(amt)
+        remaining_amt = float(spree_obj.get('remaining_amount')) - float(amt)
         spree_ref.set({u'total_people': total_people, u'people_num' : people_num, u'current_amount' : curr_amt, u'remaining_amount' : remaining_amt}, merge=True)
         
-        if remaining_amt <= 0 : 
+        if remaining_amt <= 0.0 : 
             #send shit here
+            send_text = 'Your spree ' + spree_obj.get('Spree_name') + ', is complete! The minimum spending of $' + str(spree_obj.get('min_amount')) + ' has been met. \n\nHere are your fellow Spreenters: '
+            for list_username in total_people:
+                send_text += '\n   @' + list_username
 
-            spree_ref.delete()
+            print(send_text)
+            user_db = db.collection(u'Users')
+            for list_username in total_people:
+                temp_user = user_db.where(u'Username', u'==', list_username).limit(1).stream()
+                
+                for temp_o in temp_user:
+                    lol = temp_o.to_dict()
+                    list_userid = lol['User_id']
+                    bot.sendMessage(chat_id=list_userid, text=send_text)
+            #spree_ref.delete()
         
         current_spree_id = None
         return SHOWING
