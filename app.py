@@ -86,24 +86,41 @@ def search_spree(update, context):
 
 def search_results(update, context):
      search_input = update.message.text
-     buttons = [[
-        InlineKeyboardButton(text='Back', callback_data=str(END))
-    ]]
-
-     keyboard = InlineKeyboardMarkup(buttons)
-     update.message.reply_text(text='Displaying top 5 spreent results from your search of \"' + search_input + '\":\n', reply_markup=keyboard)
+     
+     update.message.reply_text(text='Displaying top 5 spreent results from your search of \"' + search_input + '\":\n')
      
      # get results from database here and display them somehow
      sprees = db.collection(u'Sprees').where(u'Spree_name', u'==', search_input).order_by(u'remaining_amount').limit(5).stream()
      count = 0
      for spree in sprees:
+        spree_id = spree.id
+        print("spree id: " + spree_id)
         current_spree = spree.to_dict()
+        buttons = [[
+                InlineKeyboardButton(text='Join', callback_data=str(spree_id))
+        ]]
+        keyboard = InlineKeyboardMarkup(buttons)
         update.message.reply_text(text = current_spree.get("Spree_name") + '\nMin amt: $' + str(current_spree.get("min_amount")) + ' \nCurrent amt: $' + str(current_spree.get("current_amount")) + '\nRemaining amt: $' + str(current_spree.get("remaining_amount")) + '\nNumber of people: ' + str(current_spree.get("people_num")), reply_markup=keyboard)
         count = count + 1
      if count == 0 :
-        update.message.reply_text(text='No result for your search of \"' + search_input + '\":\n', reply_markup=keyboard)
+
+         update.message.reply_text(text='No result for your search of \"' + search_input + '\":\n')
+     
+     buttons = [[
+                InlineKeyboardButton(text='Back', callback_data=str(END))
+     ]]
+     keyboard = InlineKeyboardMarkup(buttons)
+     update.message.reply_text(text='Done searching!', reply_markup=keyboard)
      context.user_data[START_OVER] = True
      return SHOWING
+
+def join_spree(update, context):
+    spree_id = update.callback_query.data
+    print('joining: ' + spree_id)
+    # add user  to spree id here
+    update.callback_query.edit_message_text(text="Joined Spree!")
+
+    return SHOWING
 
 
 
@@ -283,7 +300,10 @@ def main():
         entry_points=[CommandHandler('start', start)],
 
         states={
-            SHOWING: [CallbackQueryHandler(start, pattern='^' + str(END) + '$')],
+            SHOWING: [
+                CallbackQueryHandler(start, pattern='^' + str(END) + '$'),
+                CallbackQueryHandler(join_spree, pattern='^(?!' + str(END) + ').*$'),
+            ],
             SELECTING_ACTION: [
                 CallbackQueryHandler(search_spree, pattern='^' + str(SEARCH_SPREE) + '$'),
                 CallbackQueryHandler(start_create_spree, pattern='^' + str(START_CREATE_SPREE) + '$'),
