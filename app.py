@@ -10,7 +10,6 @@ from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
 from MySpree import MySpree
 from Validation import Validation
 
-"""
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
@@ -20,7 +19,6 @@ cred = credentials.Certificate('./key.json')
 firebase_admin.initialize_app(cred)
 
 db = firestore.client()
-"""
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -47,7 +45,7 @@ END = ConversationHandler.END
 global bot
 global TOKEN
 current_field = None
-current_spree = MySpree(spree_name=None, min_amount=None, current_amount=None, id_name=None)
+current_spree = MySpree(spree_name=None, min_amount=None, current_amount=None)
 
 TOKEN = '1047562188:AAGQPtjyCzNn6lHMc-obwmRR7CBfXoz5QYQ'
 #TOKEN = os.environ.get('TOKEN')
@@ -100,7 +98,7 @@ def search_results(update, context):
      count = 0
      for spree in sprees:
         current_spree = spree.to_dict()
-        update.message.reply_text(text = current_spree.get("Spree_name") + '\nMin: $' + str(current_spree.get("min_amount")) + ' \nCurrent: $' + str(current_spree.get("current_amount")) + '\nremaining amount: $' + str(current_spree.get("remaining_amount")) + '\nNumber of people: ' + str(current_spree.get("people_num")), reply_markup=keyboard)
+        update.message.reply_text(text = current_spree.get("Spree_name") + '\nMin amt: $' + str(current_spree.get("min_amount")) + ' \nCurrent amt: $' + str(current_spree.get("current_amount")) + '\nRemaining amt: $' + str(current_spree.get("remaining_amount")) + '\nNumber of people: ' + str(current_spree.get("people_num")), reply_markup=keyboard)
         count = count + 1
      if count == 0 :
         update.message.reply_text(text='No result for your search of \"' + search_input + '\":\n', reply_markup=keyboard)
@@ -190,9 +188,6 @@ def save_spree(update, context):
 
     validation = Validation(current_spree)
     validation_result = validation.validation_check()
-    name = current_spree.spree_name
-    min = current_spree.min_amount
-    curr = current_spree.current_amount
     
     # validation fail
     if validation_result != '':
@@ -206,11 +201,17 @@ def save_spree(update, context):
         update.callback_query.edit_message_text(text=errortext + "\n" + validation_result, reply_markup=keyboard)
         return CREATING_SPREE
 
+    name = current_spree.spree_name
+    min = current_spree.min_amount
+    curr = current_spree.current_amount
+    user_name = update.effective_user['username']
+    current_spree.total_people.append(user_name)
+    
+    
     #else sucess
     #reset global vars
     
     text = 'Spree name: ' + name + '\nMin Spending Amount: ' + min + '\nCurrent Amount: ' + curr + '\n\nSpree saved!✅'
-    current_spree.set_id_name('username')
     buttons = [[
         InlineKeyboardButton(text='Okay', callback_data=str(END))
     ]]
@@ -221,6 +222,8 @@ def save_spree(update, context):
 
     keyboard = InlineKeyboardMarkup(buttons)
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
+    sprees_db = db.collection(u'Sprees')
+    sprees_db.add(current_spree.to_dict())
 
     current_spree.reset_values()
     current_field = None
