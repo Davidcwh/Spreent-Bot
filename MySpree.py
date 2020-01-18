@@ -1,14 +1,10 @@
 class MySpree:
 
-    def __init__(self, spree_name, min_amount, current_amount, id_name):
+    def __init__(self, spree_name, min_amount, current_amount):
         self.spree_name = spree_name
         self.min_amount = min_amount
         self.current_amount = current_amount
-
-        if id_name == None:
-            self.total_people = None
-        else:
-            self.total_people = [id_name]
+        self.total_people = []
 
     def add_to_list(self, name_id):
         self.total_people.append(name_id)
@@ -18,7 +14,7 @@ class MySpree:
             'Spree_name': self.spree_name,
             'min_amount': self.min_amount,
             'current_amount': self.current_amount,
-            'remaining_amount': self.remaining_amount,
+            'remaining_amount': float(self.min_amount) - float(self.current_amount),
             'people_num': len(self.total_people),
             'total_people': self.total_people
         }
@@ -31,10 +27,7 @@ class MySpree:
 
     def set_current_amount(self, input):
         self.current_amount = input
-
-    def set_id_name(self,input):
-        self.total_people = [input]
-
+        
     def reset_values(self):
         self.spree_name = None
         self.min_amount = None
