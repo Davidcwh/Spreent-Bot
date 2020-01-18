@@ -47,7 +47,7 @@ global TOKEN
 current_field = None
 current_spree = MySpree(spree_name=None, min_amount=None, current_amount=None)
 
-TOKEN = '1047562188:AAGQPtjyCzNn6lHMc-obwmRR7CBfXoz5QYQ'
+TOKEN = ''
 #TOKEN = os.environ.get('TOKEN')
 bot = telegram.Bot(TOKEN)
 
@@ -85,25 +85,54 @@ def search_spree(update, context):
      return SEARCHING
 
 def search_results(update, context):
-     search_input = update.message.text
-     buttons = [[
-        InlineKeyboardButton(text='Back', callback_data=str(END))
-    ]]
+     search_input = update.message.text.lower()
+     user_name = update.effective_user['username']
 
-     keyboard = InlineKeyboardMarkup(buttons)
-     update.message.reply_text(text='Displaying top 5 spreent results from your search of \"' + search_input + '\":\n', reply_markup=keyboard)
+     update.message.reply_text(text='Displaying top 5 spreent results from your search of \"' + search_input + '\":\n')
      
      # get results from database here and display them somehow
-     sprees = db.collection(u'Sprees').where(u'Spree_name', u'==', search_input).order_by(u'remaining_amount').limit(5).stream()
+     sprees = db.collection(u'Sprees').where(u'Spree_name', u'==', search_input).order_by(u'remaining_amount').stream()
      count = 0
      for spree in sprees:
+        spree_id = spree.id
         current_spree = spree.to_dict()
+        if user_name in current_spree.get("total_people"):
+            continue
+        buttons = [[
+                InlineKeyboardButton(text='Join', callback_data=str(spree_id))
+        ]]
+        keyboard = InlineKeyboardMarkup(buttons)
         update.message.reply_text(text = current_spree.get("Spree_name") + '\nMin amt: $' + str(current_spree.get("min_amount")) + ' \nCurrent amt: $' + str(current_spree.get("current_amount")) + '\nRemaining amt: $' + str(current_spree.get("remaining_amount")) + '\nNumber of people: ' + str(current_spree.get("people_num")), reply_markup=keyboard)
         count = count + 1
+        if count == 5 :
+            break
      if count == 0 :
-        update.message.reply_text(text='No result for your search of \"' + search_input + '\":\n', reply_markup=keyboard)
+         update.message.reply_text(text='No result for your search of \"' + search_input + '\":\n')
+     
+     buttons = [[
+                InlineKeyboardButton(text='Back', callback_data=str(END))
+     ]]
+     keyboard = InlineKeyboardMarkup(buttons)
+     update.message.reply_text(text='Done searching!', reply_markup=keyboard)
      context.user_data[START_OVER] = True
      return SHOWING
+
+def join_spree(update, context):
+    spree_id = update.callback_query.data
+    print('joining: ' + spree_id)
+
+    # add user  to spree id here
+    spree_ref = db.collection(u'Sprees').document(spree_id)
+    spree_obj = spree_ref.get().to_dict()
+    user_name = update.effective_user['username']
+    total_people = spree_obj.get('total_people')
+    total_people.append(user_name)
+    people_num = spree_obj.get('people_num') + 1
+    spree_ref.set({u'total_people': total_people, u'people_num' : people_num}, merge=True)
+
+    update.callback_query.edit_message_text(text="Joined Spree!")
+
+    return SHOWING
 
 
 
@@ -170,7 +199,7 @@ def mapInputToField(input):
     global current_spree
 
     if current_field == 'name':
-        current_spree.set_spree_name(input)
+        current_spree.set_spree_name(input.lower())
     elif current_field == 'Minimum Spending Amount':
         current_spree.set_min_amount(input)
     elif current_field == 'current amount':
@@ -218,7 +247,6 @@ def save_spree(update, context):
 
     # save current_spree to db
     user_name = update.effective_user['username']
-    print('username: ' + user_name)
 
     keyboard = InlineKeyboardMarkup(buttons)
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
@@ -283,7 +311,10 @@ def main():
         entry_points=[CommandHandler('start', start)],
 
         states={
-            SHOWING: [CallbackQueryHandler(start, pattern='^' + str(END) + '$')],
+            SHOWING: [
+                CallbackQueryHandler(start, pattern='^' + str(END) + '$'),
+                CallbackQueryHandler(join_spree, pattern='^(?!' + str(END) + ').*$'),
+            ],
             SELECTING_ACTION: [
                 CallbackQueryHandler(search_spree, pattern='^' + str(SEARCH_SPREE) + '$'),
                 CallbackQueryHandler(start_create_spree, pattern='^' + str(START_CREATE_SPREE) + '$'),
