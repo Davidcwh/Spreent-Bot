@@ -264,9 +264,23 @@ def display_user_sprees(update, context):
         InlineKeyboardButton(text='Back', callback_data=str(END))
     ]]
 
-    keyboard = InlineKeyboardMarkup(buttons)
-    update.callback_query.edit_message_text(text='Here are the Sprees you have joined/created:', reply_markup=keyboard)
+    curr_username = update.effective_user['username']
+    docs = db.collection(u'Sprees')
+    docs = docs.where(u'total_people', u'array_contains', curr_username).stream()
 
+    # query for the user's name
+    all_sprees = ''
+    for doc in docs:
+        temp_dict = doc.to_dict()
+        s = '\nSpree name: ' + str(temp_dict['Spree_name'])
+        s += '\n    Minimum spending: $' + str(temp_dict['min_amount'])
+        s += '\n    Current amount: $' + str(temp_dict['current_amount']) + '\n'
+        all_sprees += s
+        print(s)
+
+    keyboard = InlineKeyboardMarkup(buttons)
+    update.callback_query.edit_message_text(text='Here are the Sprees you have joined/created:\n' + all_sprees,
+                                            reply_markup=keyboard)
      # get results from database here and display them somehow
      
     context.user_data[START_OVER] = True
