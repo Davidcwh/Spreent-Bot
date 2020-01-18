@@ -5,7 +5,7 @@ INVALID_AMOUNT_ERROR = "Your minimum amount for the spree exceeds the current am
 EMPTY_SPREE_ERROR = "spree_name cannot be empty"
 INVALID_VALUE_MIN = "You have entered an invalid value for your minimum amount. Please enter digits only for minimum amount."
 INVALID_VALUE_CURR = "You have entered an invalid value for your current amount. Please enter digits only for minimum amount."
-
+INVALID_VALUE_SPENDING = "You have entered an invalid value for your spending amount. \nOnly digits are valid for the amount.\n\nPlease enter your spending amount again:"
 
 class Validation:
 
@@ -18,6 +18,12 @@ class Validation:
             return True
         except ValueError:
             return False
+
+    def isValidAmount(self, input):
+        if not(self.isFloat(str(input))):
+            return INVALID_VALUE_SPENDING
+        else:
+            return ""
 
     def validation_check(self):
         if len(str(self.mySpree.spree_name).strip()) == 0:

@@ -30,11 +30,11 @@ logger = logging.getLogger(__name__)
 # State definitions for top level conversation
 SELECTING_ACTION, CREATING_SPREE, SEARCH_SPREE, SEARCHING, USER_SPREES, START_CREATE_SPREE= map(chr, range(6))
 # State definitions for second level conversation
-SAVE_SPREE, CREATE_SPREE_MENU = map(chr, range(6, 8))
+SAVE_SPREE, CREATE_SPREE_MENU, JOIN_SPREE_TYPING = map(chr, range(6, 9))
 # State definitions for descriptions conversation
-SELECTING_FIELD, TYPING_FIELD= map(chr, range(8, 10))
+SELECTING_FIELD, TYPING_FIELD= map(chr, range(9, 11))
 # Meta states
-STOPPING, SHOWING = map(chr, range(10, 12))
+STOPPING, SHOWING = map(chr, range(11, 13))
 # Shortcut for ConversationHandler.END
 END = ConversationHandler.END
 
@@ -45,6 +45,7 @@ END = ConversationHandler.END
 global bot
 global TOKEN
 current_field = None
+current_spree_id = None
 current_spree = MySpree(spree_name=None, min_amount=None, current_amount=None)
 
 TOKEN = '1047562188:AAGQPtjyCzNn6lHMc-obwmRR7CBfXoz5QYQ'
@@ -114,13 +115,32 @@ def search_results(update, context):
      context.user_data[START_OVER] = True
      return SHOWING
 
-def join_spree(update, context):
-    spree_id = update.callback_query.data
-    print('joining: ' + spree_id)
-    # add user  to spree id here
-    update.callback_query.edit_message_text(text="Joined Spree!")
+def join_spree_ask_for_amount(update, context):
+    global current_spree_id
 
-    return SHOWING
+    current_spree_id = update.callback_query.data
+    # add user  to spree id here
+    update.callback_query.edit_message_text(text="Okay, please enter your amount below!")
+    bot.sendMessage(chat_id=update.effective_user['id'], text='Please enter your spending amount:')
+
+    return JOIN_SPREE_TYPING
+
+def join_spree_get_amount(update, context):
+    global current_spree_id
+
+    text = update.message.text
+    validation = Validation(None)
+    validation_result = validation.isValidAmount(text)
+    if validation_result == "":
+        buttons = [[
+                InlineKeyboardButton(text='Back', callback_data=str(END))
+        ]]
+        keyboard = InlineKeyboardMarkup(buttons)
+        update.message.reply_text(text='Successfully joined Spree!', reply_markup=keyboard)
+        current_spree_id = None
+        return SHOWING
+    else:
+        bot.sendMessage(chat_id=update.effective_user['id'], text=validation_result)
 
 
 
@@ -302,8 +322,9 @@ def main():
         states={
             SHOWING: [
                 CallbackQueryHandler(start, pattern='^' + str(END) + '$'),
-                CallbackQueryHandler(join_spree, pattern='^(?!' + str(END) + ').*$'),
+                CallbackQueryHandler(join_spree_ask_for_amount, pattern='^(?!' + str(END) + ').*$'),
             ],
+            JOIN_SPREE_TYPING: [MessageHandler(Filters.text, join_spree_get_amount)],
             SELECTING_ACTION: [
                 CallbackQueryHandler(search_spree, pattern='^' + str(SEARCH_SPREE) + '$'),
                 CallbackQueryHandler(start_create_spree, pattern='^' + str(START_CREATE_SPREE) + '$'),
