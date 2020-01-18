@@ -3,21 +3,32 @@ from math import *
 
 INVALID_AMOUNT_ERROR = "Your minimum amount for the spree exceeds the current amount. Please check again"
 EMPTY_SPREE_ERROR = "spree_name cannot be empty"
-INVALID_VALUE = "You have entered an invalid value for your minimum and current amount"
+INVALID_VALUE_MIN = "You have entered an invalid value for your minimum amount. Please enter digits only for minimum amount."
+INVALID_VALUE_CURR = "You have entered an invalid value for your current amount. Please enter digits only for minimum amount."
 
 
 class Validation:
 
     def __init__(self, myspree):
         self.mySpree = myspree
+    
+    def isFloat(self, input):
+        try:
+            float(input)
+            return True
+        except ValueError:
+            return False
 
     def validation_check(self):
-        if len(self.mySpree.spree_name) == 0:
+        if len(str(self.mySpree.spree_name).strip()) == 0:
             return EMPTY_SPREE_ERROR
-        if str(self.mySpree.current_amount).isdigit() and str(self.mySpree.min_amount).isdigit():
-            return INVALID_VALUE
+        if not(self.isFloat(str(self.mySpree.min_amount))):
+            return INVALID_VALUE_MIN
+        elif not(self.isFloat(str(self.mySpree.current_amount))):
+            return INVALID_VALUE_CURR
         elif float(self.mySpree.min_amount) <= float(self.mySpree.current_amount):
             return INVALID_AMOUNT_ERROR
         else:
-            str(round(float(self.mySpree.min_amount), 2))
-            str(round(float(self.mySpree.current_amount), 2))
+            self.mySpree.min_amount = "%.2f" % (float(self.mySpree.min_amount))
+            self.mySpree.current_amount = "%.2f" % (float(self.mySpree.current_amount))
+            return ""

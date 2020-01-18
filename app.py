@@ -8,7 +8,9 @@ from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
                           ConversationHandler, CallbackQueryHandler)
 
 from MySpree import MySpree
+from Validation import Validation
 
+"""
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
@@ -18,6 +20,7 @@ cred = credentials.Certificate('./key.json')
 firebase_admin.initialize_app(cred)
 
 db = firestore.client()
+"""
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -43,7 +46,10 @@ END = ConversationHandler.END
 
 global bot
 global TOKEN
-TOKEN = '1022803073:AAF2Rf3EY4eXKMcs7HIBCgm-5J-q31nXS-c'
+current_field = None
+current_spree = MySpree(spree_name=None, min_amount=None, current_amount=None, id_name=None)
+
+TOKEN = ''
 #TOKEN = os.environ.get('TOKEN')
 bot = telegram.Bot(TOKEN)
 
@@ -137,29 +143,58 @@ def create_spree_menu(update, context):
     return SELECTING_FIELD
 
 def ask_for_input(update, context):
+    global current_field    
+
     field = 'field'
     if update.callback_query.data == NAME:
         field = 'name'
     elif update.callback_query.data == MIN:
-        field = "Minimum Spending Amount"
+        field = 'Minimum Spending Amount'
     elif update.callback_query.data == CURRENT:
-        field = "current amount"
-    
+        field = 'current amount'
+    current_field = field
+
     text = 'Okay, tell me your Spree\'s ' + field
     update.callback_query.edit_message_text(text=text)
     return TYPING_FIELD
 
 def get_input(update, context):
+    global current_field
+
     text = update.message.text
-    #global field var
+
+    mapInputToField(text)
     context.user_data[START_OVER] = True
     return create_spree_menu(update, context)
 
+def mapInputToField(input):
+    global current_field
+    global current_spree
+
+    if current_field == 'name':
+        current_spree.set_spree_name(input)
+    elif current_field == 'Minimum Spending Amount':
+        current_spree.set_min_amount(input)
+    elif current_field == 'current amount':
+        current_spree.set_current_amount(input)
+
+
+    return 0
+
 def save_spree(update, context):
+    global current_field
+    global current_spree
+
     #retrieve saved fields and save it into database
 
+    validation = Validation(current_spree)
+    validation_result = validation.validation_check()
+    name = current_spree.spree_name
+    min = current_spree.min_amount
+    curr = current_spree.current_amount
+    
     # validation fail
-    if False:
+    if validation_result != '':
         errortext = 'error message pls go fix again'
     
         buttons = [[
@@ -167,20 +202,25 @@ def save_spree(update, context):
         ]]
 
         keyboard = InlineKeyboardMarkup(buttons)
-        update.callback_query.edit_message_text(text=errortext, reply_markup=keyboard)
+        update.callback_query.edit_message_text(text=errortext + "\n" + validation_result, reply_markup=keyboard)
         return CREATING_SPREE
 
     #else sucess
     #reset global vars
-    text = 'Spree name:\nMin Spending Amount:\nCurrent Amount:\n\nSpree saved!✅'
     
+    text = 'Spree name: ' + name + '\nMin Spending Amount: ' + min + '\nCurrent Amount: ' + curr + '\n\nSpree saved!✅'
+    current_spree.set_id_name('username')
     buttons = [[
         InlineKeyboardButton(text='Okay', callback_data=str(END))
     ]]
 
+    # save current_spree to db
     keyboard = InlineKeyboardMarkup(buttons)
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-    # get results from database here and display them somehow
+
+    current_spree.reset_values()
+    current_field = None
+
     context.user_data[START_OVER] = True
     return SHOWING
 
