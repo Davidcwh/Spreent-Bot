@@ -49,7 +49,7 @@ global TOKEN
 current_field = None
 current_spree = MySpree(spree_name=None, min_amount=None, current_amount=None, id_name=None)
 
-TOKEN = ''
+TOKEN = '1047562188:AAGQPtjyCzNn6lHMc-obwmRR7CBfXoz5QYQ'
 #TOKEN = os.environ.get('TOKEN')
 bot = telegram.Bot(TOKEN)
 
@@ -184,6 +184,7 @@ def mapInputToField(input):
 def save_spree(update, context):
     global current_field
     global current_spree
+    global bot
 
     #retrieve saved fields and save it into database
 
@@ -215,6 +216,9 @@ def save_spree(update, context):
     ]]
 
     # save current_spree to db
+    user_name = update.effective_user['username']
+    print('username: ' + user_name)
+
     keyboard = InlineKeyboardMarkup(buttons)
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
 
