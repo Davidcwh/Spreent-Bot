@@ -48,7 +48,7 @@ current_field = None
 current_spree_id = None
 current_spree = MySpree(spree_name=None, min_amount=None, current_amount=None)
 
-TOKEN = ''
+TOKEN = '1022803073:AAF2Rf3EY4eXKMcs7HIBCgm-5J-q31nXS-c'
 #TOKEN = os.environ.get('TOKEN')
 bot = telegram.Bot(TOKEN)
 
@@ -141,6 +141,24 @@ def join_spree_get_amount(update, context):
         ]]
         keyboard = InlineKeyboardMarkup(buttons)
         update.message.reply_text(text='Successfully joined Spree!', reply_markup=keyboard)
+        amt = "%.2f" % (float(text))
+        
+        user_name = update.effective_user['username']
+        spree_ref = db.collection(u'Sprees').document(current_spree_id)
+        spree_obj = spree_ref.get().to_dict()
+        total_people = spree_obj.get('total_people')
+        total_people.append(user_name)
+        people_num = spree_obj.get('people_num') + 1
+        
+        curr_amt = spree_obj.get('current_amount') + float(amt)
+        remaining_amt = spree_obj.get('remaining_amount') - float(amt)
+        spree_ref.set({u'total_people': total_people, u'people_num' : people_num, u'current_amount' : curr_amt, u'remaining_amount' : remaining_amt}, merge=True)
+        
+        if remaining_amt <= 0 : 
+            #send shit here
+
+            spree_ref.delete()
+        
         current_spree_id = None
         return SHOWING
     else:
