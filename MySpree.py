@@ -1,6 +1,6 @@
 class MySpree:
 
-    def __init__(self, spree_name, min_amount, current_amount, id_name, total_people):
+    def __init__(self, spree_name, min_amount, current_amount, id_name):
         self.spree_name = spree_name
         self.min_amount = min_amount
         self.current_amount = current_amount
