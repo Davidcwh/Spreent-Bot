@@ -15,11 +15,11 @@ logger = logging.getLogger(__name__)
 
 
 # State definitions for top level conversation
-SELECTING_ACTION, CREATING_SPREE, SEARCH_SPREE, SEARCHING, START_CREATE_SPREE= map(chr, range(5))
+SELECTING_ACTION, CREATING_SPREE, SEARCH_SPREE, SEARCHING, USER_SPREES, START_CREATE_SPREE= map(chr, range(6))
 # State definitions for second level conversation
-SAVE_SPREE, CREATE_SPREE_MENU = map(chr, range(5, 7))
+SAVE_SPREE, CREATE_SPREE_MENU = map(chr, range(6, 8))
 # State definitions for descriptions conversation
-SELECTING_FIELD, TYPING_FIELD, RETURN_MAIN = map(chr, range(7, 10))
+SELECTING_FIELD, TYPING_FIELD, RETURN_MAIN = map(chr, range(8, 11))
 # Meta states
 STOPPING, SHOWING = map(chr, range(10, 12))
 # Shortcut for ConversationHandler.END
@@ -31,7 +31,8 @@ END = ConversationHandler.END
 
 global bot
 global TOKEN
-TOKEN = os.environ.get('TOKEN')
+TOKEN = '1047562188:AAGQPtjyCzNn6lHMc-obwmRR7CBfXoz5QYQ'
+#TOKEN = os.environ.get('TOKEN')
 bot = telegram.Bot(TOKEN)
 
 
@@ -43,6 +44,8 @@ def start(update, context):
         InlineKeyboardButton(text='Create a new Spree ✍️', callback_data=str(START_CREATE_SPREE))
     ], [
         InlineKeyboardButton(text='Search for Spree 🔍', callback_data=str(SEARCH_SPREE))
+    ], [
+        InlineKeyboardButton(text='My Sprees', callback_data=str(USER_SPREES))
     ]]
     keyboard = InlineKeyboardMarkup(buttons)
 
@@ -146,6 +149,18 @@ def save_spree(update, context):
     context.user_data[START_OVER] = True
     return SHOWING
 
+def display_user_sprees(update, context):
+    buttons = [[
+        InlineKeyboardButton(text='Back', callback_data=str(END))
+    ]]
+
+    keyboard = InlineKeyboardMarkup(buttons)
+    update.callback_query.edit_message_text(text='Here are the Sprees you have joined/created:', reply_markup=keyboard)
+
+     # get results from database here and display them somehow
+     
+    context.user_data[START_OVER] = True
+    return SHOWING
 
 
 def stop(update, context):
@@ -181,31 +196,6 @@ def main():
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
-    """
-    create_spree_conv = ConversationHandler(
-        entry_points=[CallbackQueryHandler(create_spree_menu, pattern='^' + str(CREATE_SPREE_MENU) + '$'),],
-
-        states={
-            SELECTING_FIELD: [
-                CallbackQueryHandler(ask_for_input, pattern='^(?!' + str(END) + ').*$'),
-            ],
-            TYPING_FIELD: [
-                MessageHandler(Filters.text, validate_input),
-            ],
-        },
-
-        fallbacks=[
-            CallbackQueryHandler(save_spree, pattern='^' + str(END) + '$'),
-            CommandHandler('stop', stop_nested)
-        ],
-
-        map_to_parent={
-            # Return to second level menu
-            END: SHOWING,
-            # End conversation alltogether
-            STOPPING: STOPPING,
-        }
-    )"""
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
@@ -215,6 +205,7 @@ def main():
             SELECTING_ACTION: [
                 CallbackQueryHandler(search_spree, pattern='^' + str(SEARCH_SPREE) + '$'),
                 CallbackQueryHandler(start_create_spree, pattern='^' + str(START_CREATE_SPREE) + '$'),
+                CallbackQueryHandler(display_user_sprees, pattern='^' + str(USER_SPREES) + '$'),
             ],
             SEARCHING: [MessageHandler(Filters.text, search_results)],
             CREATING_SPREE:[CallbackQueryHandler(create_spree_menu, pattern='^' + str(CREATE_SPREE_MENU) + '$'),],
