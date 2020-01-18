@@ -7,6 +7,18 @@ import telegram
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
                           ConversationHandler, CallbackQueryHandler)
 
+from MySpree import MySpree
+
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
+
+# Use a service account
+cred = credentials.Certificate('./key.json')
+firebase_admin.initialize_app(cred)
+
+db = firestore.client()
+
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -15,11 +27,11 @@ logger = logging.getLogger(__name__)
 
 
 # State definitions for top level conversation
-SELECTING_ACTION, CREATING_SPREE, SEARCH_SPREE, SEARCHING, START_CREATE_SPREE= map(chr, range(5))
+SELECTING_ACTION, CREATING_SPREE, SEARCH_SPREE, SEARCHING, USER_SPREES, START_CREATE_SPREE= map(chr, range(6))
 # State definitions for second level conversation
-SAVE_SPREE, CREATE_SPREE_MENU = map(chr, range(5, 7))
+SAVE_SPREE, CREATE_SPREE_MENU = map(chr, range(6, 8))
 # State definitions for descriptions conversation
-SELECTING_FIELD, TYPING_FIELD, RETURN_MAIN = map(chr, range(7, 10))
+SELECTING_FIELD, TYPING_FIELD= map(chr, range(8, 10))
 # Meta states
 STOPPING, SHOWING = map(chr, range(10, 12))
 # Shortcut for ConversationHandler.END
@@ -31,7 +43,8 @@ END = ConversationHandler.END
 
 global bot
 global TOKEN
-TOKEN = os.environ.get('TOKEN')
+TOKEN = ''
+#TOKEN = os.environ.get('TOKEN')
 bot = telegram.Bot(TOKEN)
 
 
@@ -39,10 +52,13 @@ bot = telegram.Bot(TOKEN)
 def start(update, context):
     welcome_text = 'Welcome to Spreent! Connect with other online shoppers to hit minimum free shipping'
     followup_text = 'What would you like to do today?\nTo abort, simply type /stop.'
+
     buttons = [[
         InlineKeyboardButton(text='Create a new Spree ✍️', callback_data=str(START_CREATE_SPREE))
     ], [
         InlineKeyboardButton(text='Search for Spree 🔍', callback_data=str(SEARCH_SPREE))
+    ], [
+        InlineKeyboardButton(text='My Sprees', callback_data=str(USER_SPREES))
     ]]
     keyboard = InlineKeyboardMarkup(buttons)
 
@@ -121,18 +137,34 @@ def ask_for_input(update, context):
         field = "Minimum Spending Amount"
     elif update.callback_query.data == CURRENT:
         field = "current amount"
+    
     text = 'Okay, tell me your Spree\'s ' + field
     update.callback_query.edit_message_text(text=text)
     return TYPING_FIELD
 
-def validate_input(update, context):
+def get_input(update, context):
     text = update.message.text
-    #validate input here
+    #global field var
     context.user_data[START_OVER] = True
     return create_spree_menu(update, context)
 
 def save_spree(update, context):
     #retrieve saved fields and save it into database
+
+    # validation fail
+    if False:
+        errortext = 'error message pls go fix again'
+    
+        buttons = [[
+            InlineKeyboardButton(text='Back', callback_data=str(CREATE_SPREE_MENU))
+        ]]
+
+        keyboard = InlineKeyboardMarkup(buttons)
+        update.callback_query.edit_message_text(text=errortext, reply_markup=keyboard)
+        return CREATING_SPREE
+
+    #else sucess
+    #reset global vars
     text = 'Spree name:\nMin Spending Amount:\nCurrent Amount:\n\nSpree saved!✅'
     
     buttons = [[
@@ -141,11 +173,25 @@ def save_spree(update, context):
 
     keyboard = InlineKeyboardMarkup(buttons)
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-    
+    testSpree = MySpree("Spreename2", 100, 50, "username2")
+    doc_ref = db.collection(u'Sprees')
+    doc_ref.add(testSpree.to_dict())
     # get results from database here and display them somehow
     context.user_data[START_OVER] = True
     return SHOWING
 
+def display_user_sprees(update, context):
+    buttons = [[
+        InlineKeyboardButton(text='Back', callback_data=str(END))
+    ]]
+
+    keyboard = InlineKeyboardMarkup(buttons)
+    update.callback_query.edit_message_text(text='Here are the Sprees you have joined/created:', reply_markup=keyboard)
+
+     # get results from database here and display them somehow
+     
+    context.user_data[START_OVER] = True
+    return SHOWING
 
 
 def stop(update, context):
@@ -181,31 +227,6 @@ def main():
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
-    """
-    create_spree_conv = ConversationHandler(
-        entry_points=[CallbackQueryHandler(create_spree_menu, pattern='^' + str(CREATE_SPREE_MENU) + '$'),],
-
-        states={
-            SELECTING_FIELD: [
-                CallbackQueryHandler(ask_for_input, pattern='^(?!' + str(END) + ').*$'),
-            ],
-            TYPING_FIELD: [
-                MessageHandler(Filters.text, validate_input),
-            ],
-        },
-
-        fallbacks=[
-            CallbackQueryHandler(save_spree, pattern='^' + str(END) + '$'),
-            CommandHandler('stop', stop_nested)
-        ],
-
-        map_to_parent={
-            # Return to second level menu
-            END: SHOWING,
-            # End conversation alltogether
-            STOPPING: STOPPING,
-        }
-    )"""
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
@@ -215,6 +236,7 @@ def main():
             SELECTING_ACTION: [
                 CallbackQueryHandler(search_spree, pattern='^' + str(SEARCH_SPREE) + '$'),
                 CallbackQueryHandler(start_create_spree, pattern='^' + str(START_CREATE_SPREE) + '$'),
+                CallbackQueryHandler(display_user_sprees, pattern='^' + str(USER_SPREES) + '$'),
             ],
             SEARCHING: [MessageHandler(Filters.text, search_results)],
             CREATING_SPREE:[CallbackQueryHandler(create_spree_menu, pattern='^' + str(CREATE_SPREE_MENU) + '$'),],
@@ -223,7 +245,7 @@ def main():
                 CallbackQueryHandler(save_spree, pattern='^' + str(END) + '$')
             ],
             TYPING_FIELD: [
-                MessageHandler(Filters.text, validate_input),
+                MessageHandler(Filters.text, get_input),
             ],
         },
 
