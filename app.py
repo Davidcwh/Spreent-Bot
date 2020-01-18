@@ -19,7 +19,7 @@ SELECTING_ACTION, CREATING_SPREE, SEARCH_SPREE, SEARCHING, USER_SPREES, START_CR
 # State definitions for second level conversation
 SAVE_SPREE, CREATE_SPREE_MENU = map(chr, range(6, 8))
 # State definitions for descriptions conversation
-SELECTING_FIELD, TYPING_FIELD, RETURN_MAIN = map(chr, range(8, 11))
+SELECTING_FIELD, TYPING_FIELD= map(chr, range(8, 10))
 # Meta states
 STOPPING, SHOWING = map(chr, range(10, 12))
 # Shortcut for ConversationHandler.END
@@ -40,6 +40,7 @@ bot = telegram.Bot(TOKEN)
 def start(update, context):
     welcome_text = 'Welcome to Spreent! Connect with other online shoppers to hit minimum free shipping'
     followup_text = 'What would you like to do today?\nTo abort, simply type /stop.'
+
     buttons = [[
         InlineKeyboardButton(text='Create a new Spree ✍️', callback_data=str(START_CREATE_SPREE))
     ], [
@@ -124,18 +125,34 @@ def ask_for_input(update, context):
         field = "Minimum Spending Amount"
     elif update.callback_query.data == CURRENT:
         field = "current amount"
+    
     text = 'Okay, tell me your Spree\'s ' + field
     update.callback_query.edit_message_text(text=text)
     return TYPING_FIELD
 
-def validate_input(update, context):
+def get_input(update, context):
     text = update.message.text
-    #validate input here
+    #global field var
     context.user_data[START_OVER] = True
     return create_spree_menu(update, context)
 
 def save_spree(update, context):
     #retrieve saved fields and save it into database
+
+    # validation fail
+    if False:
+        errortext = 'error message pls go fix again'
+    
+        buttons = [[
+            InlineKeyboardButton(text='Back', callback_data=str(CREATE_SPREE_MENU))
+        ]]
+
+        keyboard = InlineKeyboardMarkup(buttons)
+        update.callback_query.edit_message_text(text=errortext, reply_markup=keyboard)
+        return CREATING_SPREE
+
+    #else sucess
+    #reset global vars
     text = 'Spree name:\nMin Spending Amount:\nCurrent Amount:\n\nSpree saved!✅'
     
     buttons = [[
@@ -214,7 +231,7 @@ def main():
                 CallbackQueryHandler(save_spree, pattern='^' + str(END) + '$')
             ],
             TYPING_FIELD: [
-                MessageHandler(Filters.text, validate_input),
+                MessageHandler(Filters.text, get_input),
             ],
         },
 
