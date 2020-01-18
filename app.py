@@ -44,14 +44,13 @@ END = ConversationHandler.END
 
 global bot
 global TOKEN
+
 current_field = None
 current_spree_id = None
 current_spree = MySpree(spree_name=None, min_amount=None, current_amount=None)
 
-TOKEN = '1047562188:AAGQPtjyCzNn6lHMc-obwmRR7CBfXoz5QYQ'
-#TOKEN = os.environ.get('TOKEN')
+TOKEN = os.environ.get('TOKEN')
 bot = telegram.Bot(TOKEN)
-
 
 # Top level conversation callbacks
 def start(update, context):
@@ -63,7 +62,7 @@ def start(update, context):
     ], [
         InlineKeyboardButton(text='Search for Spree 🔍', callback_data=str(SEARCH_SPREE))
     ], [
-        InlineKeyboardButton(text='My Sprees', callback_data=str(USER_SPREES))
+        InlineKeyboardButton(text='My Sprees 📃', callback_data=str(USER_SPREES))
     ]]
     keyboard = InlineKeyboardMarkup(buttons)
 
@@ -107,7 +106,7 @@ def search_results(update, context):
                 InlineKeyboardButton(text='Join', callback_data=str(spree_id))
         ]]
         keyboard = InlineKeyboardMarkup(buttons)
-        update.message.reply_text(text = current_spree.get("Spree_name") + '\nMin amt: $' + str(current_spree.get("min_amount")) + ' \nCurrent amt: $' + str(current_spree.get("current_amount")) + '\nRemaining amt: $' + str(current_spree.get("remaining_amount")) + '\nNumber of people: ' + str(current_spree.get("people_num")), reply_markup=keyboard)
+        update.message.reply_text(text = "Spree name: " + current_spree.get("Spree_name") + '\n   Minimum amount: $' + str(current_spree.get("min_amount")) + '\n   Current amount: $' + str(current_spree.get("current_amount")) + '\n   Remaining amount: $' + ("%.2f" % (float(str(current_spree.get("remaining_amount"))))) + '\n   Number of people: ' + str(current_spree.get("people_num")), reply_markup=keyboard)
         count = count + 1
         if count == 5 :
             break
@@ -144,7 +143,7 @@ def join_spree_get_amount(update, context):
                 InlineKeyboardButton(text='Back', callback_data=str(END))
         ]]
         keyboard = InlineKeyboardMarkup(buttons)
-        update.message.reply_text(text='Successfully joined Spree!', reply_markup=keyboard)
+        update.message.reply_text(text='Successfully joined Spree! ✅', reply_markup=keyboard)
         amt = "%.2f" % (float(text))
         
         user_name = update.effective_user['username']
@@ -160,7 +159,7 @@ def join_spree_get_amount(update, context):
         
         if remaining_amt <= 0.0 : 
             #send shit here
-            send_text = 'Your spree ' + spree_obj.get('Spree_name') + ', is complete! The minimum spending of $' + str(spree_obj.get('min_amount')) + ' has been met. \n\nHere are your fellow Spreenters: '
+            send_text = 'Your spree ' + spree_obj.get('Spree_name') + ', is complete! 🎉\nThe minimum spending of $' + str(spree_obj.get('min_amount')) + ' has been met. \n\nHere are your fellow Spreenters: '
             for list_username in total_people:
                 send_text += '\n   @' + list_username
 
@@ -173,7 +172,7 @@ def join_spree_get_amount(update, context):
                     lol = temp_o.to_dict()
                     list_userid = lol['User_id']
                     bot.sendMessage(chat_id=list_userid, text=send_text)
-            #spree_ref.delete()
+            spree_ref.delete()
         
         current_spree_id = None
         return SHOWING
@@ -183,7 +182,7 @@ def join_spree_get_amount(update, context):
 
 
 def start_create_spree(update, context):
-    text = 'A Spree has 3 essential fields:\nName, Minimum Free Shipping Amount, Current Amount\n\nAll 3 fields must be entered when creating your new Spree.'
+    text = 'A Spree has 3 essential fields:\nName of website, \nMinimum Spending to be met for Free Shipping, and\nCurrent Amount\n\nAll 3 fields must be entered when creating your new Spree.'
     button = InlineKeyboardButton(text='Okay got it!', callback_data=str(CREATE_SPREE_MENU))
     keyboard = InlineKeyboardMarkup.from_button(button)
 
@@ -196,7 +195,7 @@ def create_spree_menu(update, context):
     buttons = [[
         InlineKeyboardButton(text='Name', callback_data=str(NAME))
     ], [
-        InlineKeyboardButton(text='Min Spending Amount', callback_data=str(MIN))
+        InlineKeyboardButton(text='Minimum Spending Amount', callback_data=str(MIN))
     ], [
         InlineKeyboardButton(text='Add current amount', callback_data=str(CURRENT)),
     ], [
@@ -209,7 +208,7 @@ def create_spree_menu(update, context):
         text = 'Please select a field to update.'
         update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     else: # Else, give acknowledgement message
-        text = 'Got it! Please select a feature to update.'
+        text = 'Got it! Please select a field to update.'
         update.message.reply_text(text=text, reply_markup=keyboard)
 
     context.user_data[START_OVER] = False
@@ -266,7 +265,7 @@ def save_spree(update, context):
     
     # validation fail
     if validation_result != '':
-        errortext = 'error message pls go fix again'
+        errortext = 'Oops! Seems like something went wrong:'
     
         buttons = [[
             InlineKeyboardButton(text='Back', callback_data=str(CREATE_SPREE_MENU))
@@ -286,7 +285,7 @@ def save_spree(update, context):
     #else sucess
     #reset global vars
     
-    text = 'Spree name: ' + name + '\nMin Spending Amount: ' + min + '\nCurrent Amount: ' + curr + '\n\nSpree saved!✅'
+    text = 'Spree name: ' + name + '\nMinimum Spending Amount: $' + ("%.2f" % (float(min))) + '\nCurrent Amount: $' + ("%.2f" % (float(curr)) + '\n\nSpree saved!✅')
     buttons = [[
         InlineKeyboardButton(text='Okay', callback_data=str(END))
     ]]
@@ -319,13 +318,13 @@ def display_user_sprees(update, context):
     for doc in docs:
         temp_dict = doc.to_dict()
         s = '\nSpree name: ' + str(temp_dict['Spree_name'])
-        s += '\n    Minimum spending: $' + str(temp_dict['min_amount'])
-        s += '\n    Current amount: $' + str(temp_dict['current_amount']) + '\n'
+        s += '\n    Minimum spending: $' + ("%.2f" % (float(str(temp_dict['min_amount']))))
+        s += '\n    Current amount: $' + ("%.2f" % (float(str(temp_dict['current_amount'])))) + '\n'
         all_sprees += s
         print(s)
 
     keyboard = InlineKeyboardMarkup(buttons)
-    update.callback_query.edit_message_text(text='Here are the Sprees you have joined/created:\n' + all_sprees,
+    update.callback_query.edit_message_text(text='Here are the Sprees you are a part of:\n' + all_sprees,
                                             reply_markup=keyboard)
      # get results from database here and display them somehow
      
@@ -341,7 +340,7 @@ def stop(update, context):
 
 def stop_nested(update, context):
     """Completely end conversation from within nested conversation."""
-    update.message.reply_text('Okay, bye.')
+    update.message.reply_text('Goodbye, happy shopping! 🤑')
 
     return STOPPING
 

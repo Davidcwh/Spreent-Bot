@@ -32,5 +32,5 @@ class MySpree:
         self.spree_name = None
         self.min_amount = None
         self.current_amount = None
-        self.total_people = None
+        self.total_people = []
 
