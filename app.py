@@ -43,7 +43,7 @@ END = ConversationHandler.END
 
 global bot
 global TOKEN
-TOKEN = ''
+TOKEN = '1022803073:AAF2Rf3EY4eXKMcs7HIBCgm-5J-q31nXS-c'
 #TOKEN = os.environ.get('TOKEN')
 bot = telegram.Bot(TOKEN)
 
@@ -52,7 +52,7 @@ bot = telegram.Bot(TOKEN)
 def start(update, context):
     welcome_text = 'Welcome to Spreent! Connect with other online shoppers to hit minimum free shipping'
     followup_text = 'What would you like to do today?\nTo abort, simply type /stop.'
-
+    
     buttons = [[
         InlineKeyboardButton(text='Create a new Spree ✍️', callback_data=str(START_CREATE_SPREE))
     ], [
@@ -87,10 +87,17 @@ def search_results(update, context):
     ]]
 
      keyboard = InlineKeyboardMarkup(buttons)
-     update.message.reply_text(text='Displaying spreent results from your search of \"' + search_input + '\":\n', reply_markup=keyboard)
-
-     # get results from database here and display them somehow
+     update.message.reply_text(text='Displaying top 5 spreent results from your search of \"' + search_input + '\":\n', reply_markup=keyboard)
      
+     # get results from database here and display them somehow
+     sprees = db.collection(u'Sprees').where(u'Spree_name', u'==', search_input).order_by(u'remaining_amount').limit(5).stream()
+     count = 0
+     for spree in sprees:
+        current_spree = spree.to_dict()
+        update.message.reply_text(text = current_spree.get("Spree_name") + '\nMin: $' + str(current_spree.get("min_amount")) + ' \nCurrent: $' + str(current_spree.get("current_amount")) + '\nremaining amount: $' + str(current_spree.get("remaining_amount")) + '\nNumber of people: ' + str(current_spree.get("people_num")), reply_markup=keyboard)
+        count = count + 1
+     if count == 0 :
+        update.message.reply_text(text='No result for your search of \"' + search_input + '\":\n', reply_markup=keyboard)
      context.user_data[START_OVER] = True
      return SHOWING
 
@@ -173,9 +180,6 @@ def save_spree(update, context):
 
     keyboard = InlineKeyboardMarkup(buttons)
     update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-    testSpree = MySpree("Spreename2", 100, 50, "username2")
-    doc_ref = db.collection(u'Sprees')
-    doc_ref.add(testSpree.to_dict())
     # get results from database here and display them somehow
     context.user_data[START_OVER] = True
     return SHOWING
